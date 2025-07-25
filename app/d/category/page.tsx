@@ -61,72 +61,11 @@ export default function Categories() {
     }
   };
 
-  // Delete category
-  const deleteCategory = async (id: string) => {
-    try {
-      const response = await axios.delete(`${API_BASE_URL}?id=${id}`);
+  // (Removed unused deleteCategory function)
 
-      if (response.data.success) {
-        // Remove the deleted category from local state
-        setCategories((prev) => prev.filter((cat) => cat._id !== id));
-        return true;
-      } else {
-        throw new Error(response.data.error || "Failed to delete category");
-      }
-    } catch (err) {
-      console.error("Error deleting category:", err);
-      throw err;
-    }
-  };
+  // (Removed unused createCategory function)
 
-  // Create category
-  const createCategory = async (formData: FormData) => {
-    try {
-      const response = await axios.post(API_BASE_URL, formData, {
-        headers: {
-          "Content-Type": "multipart/form-data",
-        },
-      });
-
-      if (response.data.success) {
-        // Add the new category to local state
-        setCategories((prev) => [response.data.data, ...prev]);
-        return response.data.data;
-      } else {
-        throw new Error(response.data.error || "Failed to create category");
-      }
-    } catch (err) {
-      console.error("Error creating category:", err);
-      throw err;
-    }
-  };
-
-  // Update category
-  const updateCategory = async (id: string, formData: FormData) => {
-    try {
-      // Add the ID to formData
-      formData.append("id", id);
-
-      const response = await axios.put(API_BASE_URL, formData, {
-        headers: {
-          "Content-Type": "multipart/form-data",
-        },
-      });
-
-      if (response.data.success) {
-        // Update the category in local state
-        setCategories((prev) =>
-          prev.map((cat) => (cat._id === id ? response.data.data : cat))
-        );
-        return response.data.data;
-      } else {
-        throw new Error(response.data.error || "Failed to update category");
-      }
-    } catch (err) {
-      console.error("Error updating category:", err);
-      throw err;
-    }
-  };
+  // (Removed unused updateCategory function)
 
   // Load categories on component mount
   useEffect(() => {

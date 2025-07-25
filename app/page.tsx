@@ -32,7 +32,7 @@ const LoginPage = () => {
       } else {
         setError('Invalid credentials');
       }
-    } catch (err) {
+    } catch {
       setError('An error occurred during login');
     } finally {
       setLoading(false);

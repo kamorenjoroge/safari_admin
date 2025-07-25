@@ -70,20 +70,20 @@ export async function POST(request: Request) {
     const array = new Uint8Array(buffer);
 
     const imageUrl = await new Promise<string>((resolve, reject) => {
-    cloudinary.uploader.upload_stream(
-      { 
-        folder: 'car_categories',
-        resource_type: 'auto'
-      },
-      (error: Error | null, result: { secure_url: string } | undefined) => {
-        if (error || !result) {
-        console.error('Cloudinary upload error:', error);
-        reject(error || new Error('Image upload failed'));
-        return;
+      cloudinary.uploader.upload_stream(
+        { 
+          folder: 'car_categories',
+          resource_type: 'auto'
+        },
+        (error, result) => {
+          if (error || !result) {
+            console.error('Cloudinary upload error:', error);
+            reject(error || new Error('Image upload failed'));
+            return;
+          }
+          resolve(result.secure_url);
         }
-        resolve(result.secure_url);
-      }
-    ).end(array);
+      ).end(array);
     });
 
     // Create new Car Category

@@ -82,7 +82,7 @@ export async function PUT(
             folder: 'car_categories',
             resource_type: 'auto' 
           },
-          (error: Error | null, result: { secure_url: string } | undefined) => {
+          (error, result) => {
             if (error || !result) {
               console.error('Cloudinary upload error:', error);
               reject(error || new Error('Image upload failed'));
