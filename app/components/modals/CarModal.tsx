@@ -186,7 +186,7 @@ const CarModal: React.FC<CarModalProps> = ({
             {type === 'create' ? (
               <>
                 <FiPlus className="-ml-1 mr-2 h-5 w-5" />
-                Add Car
+                Add New Car
               </>
             ) : (
               iconMap[type]

@@ -21,7 +21,8 @@ const getPageTitle = (pathname: string) => {
     '/d/cars': 'Car Management',
     '/d/category' :'Car Categories',
     '/d/bookings': 'Bookings',
-    '/d/users': 'Users',
+    '/d/users': 'Customers',
+    '/d/owners': 'Car Owners',
     '/d/messages': 'Messages',
     '/d/test' : 'Test wewewe love dear'
   };

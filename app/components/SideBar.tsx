@@ -24,7 +24,14 @@ const navigationItems = [
     ]
   },
   { name: 'Bookings', href: '/d/bookings', icon: MdEventNote },
-  { name: 'Users', href: '/d/users', icon: MdPeople },
+   { 
+    name: 'Users Management', 
+    icon: MdPeople,
+    subItems: [
+      { name: 'Customers', href: '/d/users', icon: MdDirectionsCar },
+      { name: 'Car Owners', href: '/d/owners', icon: MdCategory },
+    ]
+  },
   { name: 'Messages', href: '/d/messages', icon: MdMessage },
   { name: 'Test', href: '/d/test', icon: MdMessage },
 ];
