@@ -366,32 +366,35 @@ const CarForm: React.FC<CarFormProps> = ({
   };
 
   return (
-    <div className="min-h-screen bg-secondary py-8 px-4">
+    <div className="min-h-screen bg-secondary py-4 sm:py-8 px-3 sm:px-4">
       <div className="max-w-4xl mx-auto">
-        <div className="bg-light rounded-lg shadow-lg p-8">
-          <div className="flex items-center gap-3 mb-8">
-            <MdDirectionsCar className="w-8 h-8 text-primary" />
-            <h1 className="text-3xl font-bold text-dark">
+        <div className="bg-light rounded-lg shadow-lg p-4 sm:p-6 lg:p-8">
+          {/* Header - Mobile optimized */}
+          <div className="flex items-center gap-2 sm:gap-3 mb-6 sm:mb-8">
+            <MdDirectionsCar className="w-6 h-6 sm:w-8 sm:h-8 text-primary flex-shrink-0" />
+            <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-dark leading-tight">
               {type === "create" ? "Add New Car" : "Edit Car Details"}
             </h1>
           </div>
 
+          {/* Error Messages */}
           {errors.submit && (
-            <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-md">
-              <p className="text-red-700">{errors.submit}</p>
+            <div className="mb-4 sm:mb-6 p-3 sm:p-4 bg-red-50 border border-red-200 rounded-md">
+              <p className="text-red-700 text-sm sm:text-base">{errors.submit}</p>
             </div>
           )}
 
           {errors.categories && (
-            <div className="mb-6 p-4 bg-orange-50 border border-orange-200 rounded-md">
-              <p className="text-orange-700">{errors.categories}</p>
+            <div className="mb-4 sm:mb-6 p-3 sm:p-4 bg-orange-50 border border-orange-200 rounded-md">
+              <p className="text-orange-700 text-sm sm:text-base">{errors.categories}</p>
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
+            {/* Form Grid - Responsive */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
               {/* Model */}
-              <div>
+              <div className="lg:col-span-1">
                 <label className="block text-sm font-medium text-earth mb-2">
                   Car Model *
                 </label>
@@ -402,28 +405,28 @@ const CarForm: React.FC<CarFormProps> = ({
                   onChange={handleInputChange}
                   required
                   placeholder="e.g., Toyota Corolla, BMW X5"
-                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent capitalize ${
+                  className={`w-full px-3 sm:px-4 py-2.5 sm:py-3 border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent capitalize text-sm sm:text-base ${
                     errors.model ? 'border-red-500' : 'border-gray-300'
                   }`}
                   disabled={isSubmitting}
                 />
-                {errors.model && <p className="text-red-500 text-sm mt-1">{errors.model}</p>}
+                {errors.model && <p className="text-red-500 text-xs sm:text-sm mt-1">{errors.model}</p>}
               </div>
 
               {/* Type - Dropdown from API */}
-              <div>
+              <div className="lg:col-span-1">
                 <label className="block text-sm font-medium text-earth mb-2">
                   Car Type *
                 </label>
                 {loadingCategories ? (
-                  <div className="animate-pulse py-3 bg-gray-200 rounded-lg h-12"></div>
+                  <div className="animate-pulse py-2.5 sm:py-3 bg-gray-200 rounded-lg h-10 sm:h-12"></div>
                 ) : (
                   <select
                     name="type"
                     value={formData.type}
                     onChange={handleInputChange}
                     required
-                    className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent  ${
+                    className={`w-full px-3 sm:px-4 py-2.5 sm:py-3 border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent text-sm sm:text-base ${
                       errors.type ? 'border-red-500' : 'border-gray-300'
                     }`}
                     disabled={isSubmitting || !Array.isArray(categories) || categories.length === 0}
@@ -437,13 +440,13 @@ const CarForm: React.FC<CarFormProps> = ({
                   </select>
                 )}
                 {!Array.isArray(categories) || (categories.length === 0 && !loadingCategories) && (
-                  <p className="text-red-500 text-sm mt-1">No car categories available. Please add some first.</p>
+                  <p className="text-red-500 text-xs sm:text-sm mt-1">No car categories available. Please add some first.</p>
                 )}
-                {errors.type && <p className="text-red-500 text-sm mt-1">{errors.type}</p>}
+                {errors.type && <p className="text-red-500 text-xs sm:text-sm mt-1">{errors.type}</p>}
               </div>
 
               {/* Registration Number */}
-              <div>
+              <div className="lg:col-span-1">
                 <label className="block text-sm font-medium text-earth mb-2">
                   Registration Number *
                 </label>
@@ -454,16 +457,16 @@ const CarForm: React.FC<CarFormProps> = ({
                   onChange={handleInputChange}
                   required
                   placeholder="e.g., KAA 123A"
-                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent uppercase ${
+                  className={`w-full px-3 sm:px-4 py-2.5 sm:py-3 border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent uppercase text-sm sm:text-base ${
                     errors.regestrationNumber ? 'border-red-500' : 'border-gray-300'
                   }`}
                   disabled={isSubmitting}
                 />
-                {errors.regestrationNumber && <p className="text-red-500 text-sm mt-1">{errors.regestrationNumber}</p>}
+                {errors.regestrationNumber && <p className="text-red-500 text-xs sm:text-sm mt-1">{errors.regestrationNumber}</p>}
               </div>
 
               {/* Location */}
-              <div>
+              <div className="lg:col-span-1">
                 <label className="block text-sm font-medium text-earth mb-2">
                   <MdLocationOn className="w-4 h-4 inline mr-1 text-primary" />
                   Location *
@@ -475,16 +478,16 @@ const CarForm: React.FC<CarFormProps> = ({
                   onChange={handleInputChange}
                   required
                   placeholder="e.g., Nairobi, Mombasa"
-                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent capitalize ${
+                  className={`w-full px-3 sm:px-4 py-2.5 sm:py-3 border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent capitalize text-sm sm:text-base ${
                     errors.location ? 'border-red-500' : 'border-gray-300'
                   }`}
                   disabled={isSubmitting}
                 />
-                {errors.location && <p className="text-red-500 text-sm mt-1">{errors.location}</p>}
+                {errors.location && <p className="text-red-500 text-xs sm:text-sm mt-1">{errors.location}</p>}
               </div>
 
               {/* Price Per Day */}
-              <div>
+              <div className="lg:col-span-1">
                 <label className="block text-sm font-medium text-earth mb-2">
                   Price Per Day (KES) *
                 </label>
@@ -496,16 +499,16 @@ const CarForm: React.FC<CarFormProps> = ({
                   required
                   min="100"
                   placeholder="e.g., 5000"
-                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent ${
+                  className={`w-full px-3 sm:px-4 py-2.5 sm:py-3 border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent text-sm sm:text-base ${
                     errors.pricePerDay ? 'border-red-500' : 'border-gray-300'
                   }`}
                   disabled={isSubmitting}
                 />
-                {errors.pricePerDay && <p className="text-red-500 text-sm mt-1">{errors.pricePerDay}</p>}
+                {errors.pricePerDay && <p className="text-red-500 text-xs sm:text-sm mt-1">{errors.pricePerDay}</p>}
               </div>
 
               {/* Year */}
-              <div>
+              <div className="lg:col-span-1">
                 <label className="block text-sm font-medium text-earth mb-2">
                   <MdCalendarToday className="w-4 h-4 inline mr-1 text-primary" />
                   Year *
@@ -518,16 +521,16 @@ const CarForm: React.FC<CarFormProps> = ({
                   required
                   min="1900"
                   max={new Date().getFullYear() + 1}
-                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent ${
+                  className={`w-full px-3 sm:px-4 py-2.5 sm:py-3 border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent text-sm sm:text-base ${
                     errors.year ? 'border-red-500' : 'border-gray-300'
                   }`}
                   disabled={isSubmitting}
                 />
-                {errors.year && <p className="text-red-500 text-sm mt-1">{errors.year}</p>}
+                {errors.year && <p className="text-red-500 text-xs sm:text-sm mt-1">{errors.year}</p>}
               </div>
 
               {/* Transmission */}
-              <div>
+              <div className="lg:col-span-1">
                 <label className="block text-sm font-medium text-earth mb-2">
                   <MdSettings className="w-4 h-4 inline mr-1 text-primary" />
                   Transmission *
@@ -536,7 +539,7 @@ const CarForm: React.FC<CarFormProps> = ({
                   name="transmission"
                   value={formData.transmission}
                   onChange={handleInputChange}
-                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent ${
+                  className={`w-full px-3 sm:px-4 py-2.5 sm:py-3 border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent text-sm sm:text-base ${
                     errors.transmission ? 'border-red-500' : 'border-gray-300'
                   }`}
                   disabled={isSubmitting}
@@ -547,11 +550,11 @@ const CarForm: React.FC<CarFormProps> = ({
                     </option>
                   ))}
                 </select>
-                {errors.transmission && <p className="text-red-500 text-sm mt-1">{errors.transmission}</p>}
+                {errors.transmission && <p className="text-red-500 text-xs sm:text-sm mt-1">{errors.transmission}</p>}
               </div>
 
               {/* Fuel Type */}
-              <div>
+              <div className="lg:col-span-1">
                 <label className="block text-sm font-medium text-earth mb-2">
                   <MdLocalGasStation className="w-4 h-4 inline mr-1 text-primary" />
                   Fuel Type *
@@ -560,7 +563,7 @@ const CarForm: React.FC<CarFormProps> = ({
                   name="fuel"
                   value={formData.fuel}
                   onChange={handleInputChange}
-                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent ${
+                  className={`w-full px-3 sm:px-4 py-2.5 sm:py-3 border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent text-sm sm:text-base ${
                     errors.fuel ? 'border-red-500' : 'border-gray-300'
                   }`}
                   disabled={isSubmitting}
@@ -571,11 +574,11 @@ const CarForm: React.FC<CarFormProps> = ({
                     </option>
                   ))}
                 </select>
-                {errors.fuel && <p className="text-red-500 text-sm mt-1">{errors.fuel}</p>}
+                {errors.fuel && <p className="text-red-500 text-xs sm:text-sm mt-1">{errors.fuel}</p>}
               </div>
 
               {/* Seats */}
-              <div>
+              <div className="lg:col-span-1">
                 <label className="block text-sm font-medium text-earth mb-2">
                   <MdPeople className="w-4 h-4 inline mr-1 text-primary" />
                   Number of Seats *
@@ -588,22 +591,22 @@ const CarForm: React.FC<CarFormProps> = ({
                   required
                   min="1"
                   max="20"
-                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent ${
+                  className={`w-full px-3 sm:px-4 py-2.5 sm:py-3 border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent text-sm sm:text-base ${
                     errors.seats ? 'border-red-500' : 'border-gray-300'
                   }`}
                   disabled={isSubmitting}
                 />
-                {errors.seats && <p className="text-red-500 text-sm mt-1">{errors.seats}</p>}
+                {errors.seats && <p className="text-red-500 text-xs sm:text-sm mt-1">{errors.seats}</p>}
               </div>
             </div>
 
-            {/* Features Section */}
+            {/* Features Section - Mobile optimized */}
             <div>
               <label className="block text-sm font-medium text-earth mb-2">
                 Car Features
               </label>
-              <p className="text-sm text-gray-600 mb-3">Add features one by one (optional)</p>
-              <div className="flex gap-2 mb-3">
+              <p className="text-xs sm:text-sm text-gray-600 mb-3">Add features one by one (optional)</p>
+              <div className="flex flex-col sm:flex-row gap-2 mb-3">
                 <input
                   type="text"
                   ref={featureInputRef}
@@ -611,7 +614,7 @@ const CarForm: React.FC<CarFormProps> = ({
                   onChange={(e) => setNewFeature(e.target.value)}
                   onKeyDown={handleFeatureKeyDown}
                   placeholder="Add feature (e.g., GPS, Air Conditioning)"
-                  className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent capitalize"
+                  className="flex-1 px-3 sm:px-4 py-2.5 sm:py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent capitalize text-sm sm:text-base"
                   disabled={isSubmitting}
                   list="featureSuggestions"
                 />
@@ -619,11 +622,11 @@ const CarForm: React.FC<CarFormProps> = ({
                   type="button"
                   onClick={addFeature}
                   disabled={isSubmitting || !newFeature.trim()}
-                  className="px-4 py-3 bg-primary text-white rounded-lg hover:bg-primary-dark disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                  className="px-4 py-2.5 sm:py-3 bg-primary text-white rounded-lg hover:bg-primary-dark disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-sm sm:text-base min-h-[42px] sm:min-h-[48px]"
                   title="Add feature"
                 >
-                  <MdAdd className="w-5 h-5" />
-                  Add
+                  <MdAdd className="w-4 h-4 sm:w-5 sm:h-5" />
+                  <span className="sm:inline">Add</span>
                 </button>
               </div>
               
@@ -633,19 +636,19 @@ const CarForm: React.FC<CarFormProps> = ({
                 ))}
               </datalist>
 
-              {/* Display selected features */}
+              {/* Display selected features - Mobile optimized */}
               {formData.features.length > 0 && (
                 <div className="mt-3 flex flex-wrap gap-2">
                   {formData.features.map((feature, index) => (
                     <span
                       key={index}
-                      className="inline-flex items-center gap-1 px-3 py-1 bg-primary text-white rounded-full text-sm"
+                      className="inline-flex items-center gap-1 px-2 sm:px-3 py-1 bg-primary text-white rounded-full text-xs sm:text-sm"
                     >
-                      {feature}
+                      <span className="break-words">{feature}</span>
                       <button
                         type="button"
                         onClick={() => removeFeature(index)}
-                        className="ml-1 hover:text-gray-300"
+                        className="ml-1 hover:text-gray-300 flex-shrink-0"
                         title="Remove feature"
                       >
                         <MdClose className="w-3 h-3" />
@@ -656,7 +659,7 @@ const CarForm: React.FC<CarFormProps> = ({
               )}
             </div>
 
-            {/* Image Upload */}
+            {/* Image Upload - Mobile optimized */}
             <div>
               <label className="block text-sm font-medium text-earth mb-2">
                 Car Image *
@@ -673,12 +676,12 @@ const CarForm: React.FC<CarFormProps> = ({
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
                 disabled={isSubmitting}
-                className="flex items-center gap-2 px-4 py-3 bg-primary text-white rounded-lg hover:bg-primary-dark disabled:opacity-50"
+                className="flex items-center justify-center gap-2 px-4 py-2.5 sm:py-3 bg-primary text-white rounded-lg hover:bg-primary-dark disabled:opacity-50 w-full sm:w-auto text-sm sm:text-base"
               >
-                <MdUpload className="w-5 h-5" />
+                <MdUpload className="w-4 h-4 sm:w-5 sm:h-5" />
                 Upload Car Image
               </button>
-              <p className="text-sm text-gray-600 mt-1">Accepted formats: JPG, PNG, GIF (Max: 5MB)</p>
+              <p className="text-xs sm:text-sm text-gray-600 mt-1">Accepted formats: JPG, PNG, GIF (Max: 5MB)</p>
               
               <div className="mt-4">
                 {existingImage && !preview && (
@@ -688,7 +691,7 @@ const CarForm: React.FC<CarFormProps> = ({
                       alt="Current car image"
                       width={200}
                       height={150}
-                      className="rounded-lg object-cover border"
+                      className="rounded-lg object-cover border w-full max-w-[200px] h-auto"
                     />
                     <button
                       type="button"
@@ -698,7 +701,7 @@ const CarForm: React.FC<CarFormProps> = ({
                     >
                       <MdClose className="w-4 h-4" />
                     </button>
-                    <p className="text-sm text-gray-600 mt-1">Current image</p>
+                    <p className="text-xs sm:text-sm text-gray-600 mt-1">Current image</p>
                   </div>
                 )}
 
@@ -709,7 +712,7 @@ const CarForm: React.FC<CarFormProps> = ({
                       alt="Car preview"
                       width={200}
                       height={150}
-                      className="rounded-lg object-cover border"
+                      className="rounded-lg object-cover border w-full max-w-[200px] h-auto"
                     />
                     <button
                       type="button"
@@ -719,19 +722,20 @@ const CarForm: React.FC<CarFormProps> = ({
                     >
                       <MdClose className="w-4 h-4" />
                     </button>
-                    <p className="text-sm text-gray-600 mt-1">New image preview</p>
+                    <p className="text-xs sm:text-sm text-gray-600 mt-1">New image preview</p>
                   </div>
                 )}
               </div>
-              {errors.image && <p className="text-red-500 text-sm mt-1">{errors.image}</p>}
+              {errors.image && <p className="text-red-500 text-xs sm:text-sm mt-1">{errors.image}</p>}
             </div>
 
-            <div className="flex justify-end gap-4 pt-6 border-t">
+            {/* Action Buttons - Mobile optimized */}
+            <div className="flex flex-col sm:flex-row justify-end gap-3 sm:gap-4 pt-4 sm:pt-6 border-t">
               <button
                 type="button"
                 onClick={resetForm}
                 disabled={isSubmitting}
-                className="flex items-center gap-2 px-6 py-3 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                className="flex items-center justify-center gap-2 px-4 sm:px-6 py-2.5 sm:py-3 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 disabled:opacity-50 order-2 sm:order-1 text-sm sm:text-base"
               >
                 <MdRefresh className="w-4 h-4" />
                 Reset
@@ -739,9 +743,9 @@ const CarForm: React.FC<CarFormProps> = ({
               <button
                 type="submit"
                 disabled={isSubmitting || (categories.length === 0 && !loadingCategories)}
-                className="flex items-center gap-2 px-6 py-3 bg-primary text-white rounded-lg hover:bg-primary-dark disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex items-center justify-center gap-2 px-4 sm:px-6 py-2.5 sm:py-3 bg-primary text-white rounded-lg hover:bg-primary-dark disabled:opacity-50 disabled:cursor-not-allowed order-1 sm:order-2 text-sm sm:text-base font-medium"
               >
-                <MdSave className="w-5 h-5" />
+                <MdSave className="w-4 h-4 sm:w-5 sm:h-5" />
                 {isSubmitting ? "Processing..." : type === "create" ? "Add Car" : "Update Car"}
               </button>
             </div>
