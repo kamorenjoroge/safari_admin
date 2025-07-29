@@ -502,7 +502,7 @@ const OwnerForm: React.FC<OwnerFormProps> = ({ type, ownerId, ownerData, onSucce
       <div className="mt-8 pt-6 border-t border-gray-200">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-semibold text-dark">Owner&lsquo;s Vehicles</h3>
-          <div className="flex items-center space-x-2 text-sm text-gray-600">
+          <div className="hidden sm:flex items-center space-x-2 text-sm text-gray-600">
             <FiInfo className="h-4 w-4" />
             <span>{availableCars.length} cars available for assignment</span>
           </div>
