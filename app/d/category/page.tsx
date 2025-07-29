@@ -61,12 +61,6 @@ export default function Categories() {
     }
   };
 
-  // (Removed unused deleteCategory function)
-
-  // (Removed unused createCategory function)
-
-  // (Removed unused updateCategory function)
-
   // Load categories on component mount
   useEffect(() => {
     fetchCategories();

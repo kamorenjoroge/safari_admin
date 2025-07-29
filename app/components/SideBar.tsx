@@ -10,6 +10,8 @@ import {
   MdMessage,
   MdExpandMore,
   MdCategory,
+  MdCarRental,
+  MdLocalTaxi,
 } from 'react-icons/md';
 import { useState } from 'react';
 
@@ -28,8 +30,8 @@ const navigationItems = [
     name: 'Users Management', 
     icon: MdPeople,
     subItems: [
-      { name: 'Customers', href: '/d/users', icon: MdDirectionsCar },
-      { name: 'Car Owners', href: '/d/owners', icon: MdCategory },
+      { name: 'Customers', href: '/d/users', icon: MdLocalTaxi },
+      { name: 'Car Owners', href: '/d/owners', icon: MdCarRental },
     ]
   },
   { name: 'Messages', href: '/d/messages', icon: MdMessage },

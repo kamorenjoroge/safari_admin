@@ -16,6 +16,20 @@ type Car = {
   features?: string[];
 };
 
+type CarOwner = {
+  _id: string;
+  name: string;
+  email: string;
+  phone: string;
+  location: string;
+  joinedDate: string;
+  status: string;
+  cars: Car[];
+  createdAt: string;
+  updatedAt: string;
+  __v: number;
+};
+
 const CarCard: React.FC<{ car: Car }> = ({ car }) => {
   return (
     <div className="bg-light rounded-lg shadow-default overflow-hidden transition-default hover:shadow-primary">
@@ -85,24 +99,62 @@ const CarSearchPage: React.FC = () => {
   const [suggestions, setSuggestions] = useState<Car[]>([]);
   const [showSuggestions, setShowSuggestions] = useState<boolean>(false);
   const [allCars, setAllCars] = useState<Car[]>([]);
+  const [carOwners, setCarOwners] = useState<CarOwner[]>([]);
+  const [availableCars, setAvailableCars] = useState<Car[]>([]);
   const [foundCars, setFoundCars] = useState<Car[]>([]);
   const [errorMessage, setErrorMessage] = useState<string>('');
+  const [isLoading, setIsLoading] = useState<boolean>(true);
   const searchRef = useRef<HTMLDivElement>(null);
 
-  // Fetch all cars from API
+  // Fetch all cars and car owners from API
   useEffect(() => {
-    const fetchCars = async () => {
+    const fetchData = async () => {
+      setIsLoading(true);
       try {
-        const response = await axios.get('/api/cars');
-        if (response.data.success) {
-          setAllCars(response.data.data);
+        const [carsResponse, ownersResponse] = await Promise.all([
+          axios.get('/api/cars'),
+          axios.get('/api/carowners')
+        ]);
+
+        if (carsResponse.data.success) {
+          setAllCars(carsResponse.data.data);
+        }
+
+        if (ownersResponse.data.success) {
+          setCarOwners(ownersResponse.data.data);
         }
       } catch (error) {
-        console.error('Error fetching cars:', error);
+        console.error('Error fetching data:', error);
+        setErrorMessage('Error loading data. Please refresh the page.');
+      } finally {
+        setIsLoading(false);
       }
     };
-    fetchCars();
+    fetchData();
   }, []);
+
+  // Filter cars that are not assigned to any owner
+  useEffect(() => {
+    if (allCars.length > 0 && carOwners.length >= 0) {
+      // Get all registration numbers that are already assigned to owners
+      const assignedRegNumbers = new Set<string>();
+      
+      carOwners.forEach(owner => {
+        if (owner.cars && owner.cars.length > 0) {
+          owner.cars.forEach(car => {
+            assignedRegNumbers.add(car.regestrationNumber.toLowerCase());
+          });
+        }
+      });
+
+      // Filter cars that are not in the assigned list
+      const unassignedCars = allCars.filter(car => 
+        !assignedRegNumbers.has(car.regestrationNumber.toLowerCase())
+      );
+      
+      setAvailableCars(unassignedCars);
+    }
+  }, [allCars, carOwners]);
 
   // Handle clicks outside the search box
   useEffect(() => {
@@ -123,14 +175,14 @@ const CarSearchPage: React.FC = () => {
       return;
     }
 
-    const filtered = allCars.filter(car =>
+    const filtered = availableCars.filter(car =>
       car.regestrationNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
       car.model.toLowerCase().includes(searchTerm.toLowerCase())
     ).slice(0, 10);
 
     setSuggestions(filtered);
     setShowSuggestions(filtered.length > 0);
-  }, [searchTerm, allCars]);
+  }, [searchTerm, availableCars]);
 
   const handleSearch = async (car?: Car) => {
     setIsSearching(true);
@@ -143,8 +195,8 @@ const CarSearchPage: React.FC = () => {
         );
         setSearchTerm('');
       } else {
-        // First try exact match by registration number
-        const exactMatch = allCars.find(c => 
+        // First try exact match by registration number in available cars only
+        const exactMatch = availableCars.find(c => 
           c.regestrationNumber.toLowerCase() === searchTerm.toLowerCase()
         );
         
@@ -154,8 +206,16 @@ const CarSearchPage: React.FC = () => {
           );
           setSearchTerm('');
         } else {
-          // If no exact match, show error message
-          setErrorMessage('Car not found. Please register this car or contact admin');
+          // Check if the car exists in all cars but is assigned to an owner
+          const carExistsButAssigned = allCars.find(c => 
+            c.regestrationNumber.toLowerCase() === searchTerm.toLowerCase()
+          );
+          
+          if (carExistsButAssigned) {
+            setErrorMessage('This car is already assigned to an owner.');
+          } else {
+            setErrorMessage('Car not found. Please register this car or contact admin');
+          }
         }
       }
     } catch (error) {
@@ -171,14 +231,44 @@ const CarSearchPage: React.FC = () => {
     setFoundCars(prev => prev.filter(car => car._id !== carId));
   };
 
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-secondary-dark p-4 md:p-8 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-earth">Loading available cars...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-secondary-dark p-4 md:p-8">
       <div className="max-w-6xl mx-auto">
-        <h1 className="text-2xl md:text-3xl font-bold text-primary mb-6">Car Owner Management</h1>
+        {/* Stats Section */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+          <div className="bg-light p-4 rounded-lg shadow-default">
+            <h3 className="text-lg font-semibold text-earth mb-1">Total Cars</h3>
+            <p className="text-2xl font-bold text-primary">{allCars.length}</p>
+          </div>
+          <div className="bg-light p-4 rounded-lg shadow-default">
+            <h3 className="text-lg font-semibold text-earth mb-1">Assigned Cars</h3>
+            <p className="text-2xl font-bold text-accent">{allCars.length - availableCars.length}</p>
+          </div>
+          <div className="bg-light p-4 rounded-lg shadow-default">
+            <h3 className="text-lg font-semibold text-earth mb-1">Available for Assignment</h3>
+            <p className="text-2xl font-bold text-info">{availableCars.length}</p>
+          </div>
+        </div>
         
         {/* Search Section */}
         <div className="bg-light p-4 rounded-lg shadow-default mb-6" ref={searchRef}>
-          <h2 className="text-lg font-semibold text-earth mb-3">Search Cars by Registration Number</h2>
+          <h2 className="text-lg font-semibold text-earth mb-3">
+            Search Unassigned Cars by Registration Number
+          </h2>
+          <p className="text-sm text-earth-light mb-3">
+            Only showing cars that are not yet assigned to any car owner
+          </p>
           <div className="relative">
             <div className="flex flex-col md:flex-row gap-3">
               <div className="relative flex-grow">
@@ -205,8 +295,8 @@ const CarSearchPage: React.FC = () => {
                           <div className="font-medium text-earth">{car.model}</div>
                           <div className="text-sm text-earth-light">{car.regestrationNumber}</div>
                         </div>
-                        <span className="text-xs bg-primary text-light px-2 py-1 rounded-full">
-                          {car.status}
+                        <span className="text-xs bg-info text-light px-2 py-1 rounded-full">
+                          Unassigned
                         </span>
                       </li>
                     ))}
@@ -223,7 +313,12 @@ const CarSearchPage: React.FC = () => {
             </div>
             {errorMessage && (
               <div className="mt-2 text-danger text-sm">
-                {errorMessage} <a href="/admin/cars/add" className="text-primary hover:underline">Register new car</a>
+                {errorMessage} 
+                {!errorMessage.includes('already assigned') && (
+                  <a href="/admin/cars/add" className="text-primary hover:underline ml-1">
+                    Register new car
+                  </a>
+                )}
               </div>
             )}
           </div>
@@ -241,7 +336,7 @@ const CarSearchPage: React.FC = () => {
           <div className="mb-8">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-xl font-semibold text-primary">
-                Found {foundCars.length} {foundCars.length === 1 ? 'Car' : 'Cars'}
+                Found {foundCars.length} Unassigned {foundCars.length === 1 ? 'Car' : 'Cars'}
               </h2>
               <button 
                 onClick={() => {
@@ -275,8 +370,16 @@ const CarSearchPage: React.FC = () => {
 
         {!isSearching && searchTerm && foundCars.length === 0 && !errorMessage && (
           <div className="p-6 bg-light rounded-lg shadow-default text-center">
-            <p className="text-earth">No cars found matching your search</p>
+            <p className="text-earth">No unassigned cars found matching your search</p>
             <p className="text-sm text-earth-light mt-2">Try a different registration number</p>
+          </div>
+        )}
+
+        {/* Show message when no cars are available for assignment */}
+        {availableCars.length === 0 && !isLoading && (
+          <div className="p-6 bg-light rounded-lg shadow-default text-center">
+            <p className="text-earth">No cars available for assignment</p>
+            <p className="text-sm text-earth-light mt-2">All cars are currently assigned to owners</p>
           </div>
         )}
       </div>

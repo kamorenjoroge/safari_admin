@@ -1,6 +1,12 @@
+
+import OwnerModal from "@/app/components/modals/OwnerModal"
+
+
 const Page = () => {
   return (
-    <div className=''>Page</div>
+    <div className=''>
+      <OwnerModal type="create"  />
+    </div>
   )
 }
 
