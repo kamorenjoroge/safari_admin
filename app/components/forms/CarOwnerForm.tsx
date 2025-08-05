@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import Image from 'next/image';
-import { FiUser, FiMail, FiPhone, FiMapPin, FiCalendar, FiCheck, FiSave, FiX, FiInfo } from 'react-icons/fi';
+import { FiUser, FiMail, FiPhone, FiMapPin, FiCalendar, FiCheck, FiSave, FiX, FiInfo, FiSearch } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 
 type Car = {
@@ -14,23 +14,11 @@ type Car = {
   year: number;
   location: string;
   pricePerDay: number;
-  status: string;
   image?: string;
   features?: string[];
-};
-
-type CarOwner = {
-  _id: string;
-  name: string;
-  email: string;
-  phone: string;
-  location: string;
-  joinedDate: string;
-  status: string;
-  cars: Car[];
-  createdAt: string;
-  updatedAt: string;
-  __v: number;
+  transmission?: string;
+  fuel?: string;
+  seats?: number;
 };
 
 type OwnerFormData = {
@@ -40,20 +28,28 @@ type OwnerFormData = {
   location: string;
   joinedDate: string;
   status: 'active' | 'inactive' | 'suspended';
-  cars: {
-    _id: string;
-    model: string;
-    regestrationNumber: string;
-    type: string;
-    year: number;
-    image: string;
-  }[];
+  cars: string[]; // Array of car IDs
 };
 
 type OwnerFormProps = {
   type: 'create' | 'update';
   ownerId?: string;
-  ownerData?: OwnerFormData;
+  ownerData?: {
+    name: string;
+    email: string;
+    phone: string;
+    location: string;
+    joinedDate: string;
+    status: 'active' | 'inactive' | 'suspended';
+    cars: Array<{
+      _id: string;
+      model: string;
+      regestrationNumber: string;
+      type: string;
+      year: number;
+      image: string;
+    }>;
+  };
   onSuccess?: () => void;
 };
 
@@ -76,18 +72,11 @@ const OwnerForm: React.FC<OwnerFormProps> = ({ type, ownerId, ownerData, onSucce
   const [suggestions, setSuggestions] = useState<Car[]>([]);
   const [showSuggestions, setShowSuggestions] = useState<boolean>(false);
   const [allCars, setAllCars] = useState<Car[]>([]);
-  const [carOwners, setCarOwners] = useState<CarOwner[]>([]);
   const [availableCars, setAvailableCars] = useState<Car[]>([]);
-  const [foundCars, setFoundCars] = useState<Car[]>(
-    ownerData?.cars
-      ? ownerData.cars.map(car => ({
-          ...car,
-          location: '', // Provide a sensible default or fetch if available
-          pricePerDay: 0,
-          status: 'available',
-        }))
-      : []
+  const [selectedCarIds, setSelectedCarIds] = useState<string[]>(
+    ownerData?.cars ? ownerData.cars.map(car => car._id) : []
   );
+  const [selectedCars, setSelectedCars] = useState<Car[]>([]);
   const [errorMessage, setErrorMessage] = useState<string>('');
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const searchRef = useRef<HTMLDivElement>(null);
@@ -103,71 +92,86 @@ const OwnerForm: React.FC<OwnerFormProps> = ({ type, ownerId, ownerData, onSucce
         joinedDate: ownerData.joinedDate,
         status: ownerData.status,
       });
-      setFoundCars(
-        ownerData.cars.map(car => ({
-          ...car,
-          location: '', // Provide a sensible default or fetch if available
-          pricePerDay: 0,
-          status: 'available',
-        }))
-      );
+      setSelectedCarIds(ownerData.cars.map(car => car._id));
+      // Convert ownerData.cars to full Car objects
+      const ownerCars = ownerData.cars.map(car => ({
+        ...car,
+        location: '',
+        pricePerDay: 0,
+        transmission: '',
+        fuel: '',
+        seats: 4
+      }));
+      setSelectedCars(ownerCars);
     }
   }, [type, ownerData]);
 
-  // Fetch all cars and car owners from API
+  // Fetch all cars and existing car owners
   useEffect(() => {
     const fetchData = async () => {
       setIsLoading(true);
       try {
-        const [carsResponse, ownersResponse] = await Promise.all([
-          axios.get('/api/cars'),
-          axios.get('/api/carowners')
-        ]);
-
+        // Fetch all cars
+        const carsResponse = await axios.get('/api/cars');
         if (carsResponse.data.success) {
           setAllCars(carsResponse.data.data);
         }
 
+        // Fetch existing car owners to determine which cars are available
+        const ownersResponse = await axios.get('/api/carowners');
         if (ownersResponse.data.success) {
-          setCarOwners(ownersResponse.data.data);
+          const assignedCarIds = new Set<string>();
+          
+          // Get all car IDs that are already assigned to owners
+          ownersResponse.data.data.forEach((owner: { cars?: Array<{ _id: string } | string> }) => {
+            if (owner.cars && Array.isArray(owner.cars)) {
+              owner.cars.forEach((car: { _id: string } | string) => {
+                // Handle both populated and non-populated car references
+                const carId = typeof car === 'string' ? car : car._id;
+                if (carId) {
+                  assignedCarIds.add(carId);
+                }
+              });
+            }
+          });
+
+          // If updating, exclude current owner's cars from assigned cars
+          if (type === 'update' && ownerData) {
+            ownerData.cars.forEach(car => {
+              assignedCarIds.delete(car._id);
+            });
+          }
+
+          // Filter available cars
+          if (carsResponse.data.success) {
+            const available = carsResponse.data.data.filter((car: Car) => 
+              !assignedCarIds.has(car._id)
+            );
+            setAvailableCars(available);
+          }
         }
       } catch (error) {
         console.error('Error fetching data:', error);
-        setErrorMessage('Error loading data. Please refresh the page.');
+        setErrorMessage('Error loading form data. Please refresh the page.');
+        toast.error('Failed to load form data');
       } finally {
         setIsLoading(false);
       }
     };
     fetchData();
-  }, []);
+  }, [type, ownerData]);
 
-  // Filter cars that are not assigned to any owner (excluding current owner when updating)
+  // Update selected cars when selectedCarIds changes
   useEffect(() => {
-    if (allCars.length > 0 && carOwners.length >= 0) {
-      // Get all registration numbers that are already assigned to OTHER owners
-      const assignedRegNumbers = new Set<string>();
-      
-      carOwners.forEach(owner => {
-        // Skip current owner when updating to allow keeping their existing cars
-        if (type === 'update' && owner._id === ownerId) {
-          return;
-        }
-        
-        if (owner.cars && owner.cars.length > 0) {
-          owner.cars.forEach(car => {
-            assignedRegNumbers.add(car.regestrationNumber.toLowerCase());
-          });
-        }
-      });
-
-      // Filter cars that are not in the assigned list
-      const unassignedCars = allCars.filter(car => 
-        !assignedRegNumbers.has(car.regestrationNumber.toLowerCase())
+    if (allCars.length > 0 && selectedCarIds.length > 0) {
+      const updatedSelectedCars = allCars.filter(car => 
+        selectedCarIds.includes(car._id)
       );
-      
-      setAvailableCars(unassignedCars);
+      setSelectedCars(updatedSelectedCars);
+    } else if (selectedCarIds.length === 0) {
+      setSelectedCars([]);
     }
-  }, [allCars, carOwners, type, ownerId]);
+  }, [allCars, selectedCarIds]);
 
   // Handle clicks outside the search box
   useEffect(() => {
@@ -180,9 +184,9 @@ const OwnerForm: React.FC<OwnerFormProps> = ({ type, ownerId, ownerData, onSucce
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Update suggestions when search term changes - now uses availableCars instead of allCars
+  // Update suggestions when search term changes
   useEffect(() => {
-    if (searchTerm.trim() === '' || searchTerm.length < 3) {
+    if (searchTerm.trim() === '' || searchTerm.length < 2) {
       setSuggestions([]);
       setShowSuggestions(false);
       return;
@@ -190,7 +194,8 @@ const OwnerForm: React.FC<OwnerFormProps> = ({ type, ownerId, ownerData, onSucce
 
     const filtered = availableCars.filter(car =>
       car.regestrationNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      car.model.toLowerCase().includes(searchTerm.toLowerCase())
+      car.model.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      car.type.toLowerCase().includes(searchTerm.toLowerCase())
     ).slice(0, 10);
 
     setSuggestions(filtered);
@@ -212,49 +217,46 @@ const OwnerForm: React.FC<OwnerFormProps> = ({ type, ownerId, ownerData, onSucce
     }
   };
 
-  const handleSearch = async (car?: Car) => {
+  const handleAddCar = (car: Car) => {
+    setErrorMessage('');
+    if (!selectedCarIds.includes(car._id)) {
+      setSelectedCarIds(prev => [...prev, car._id]);
+      setSelectedCars(prev => [...prev, car]);
+      toast.success(`${car.model} (${car.regestrationNumber}) added`);
+    } else {
+      toast('Car is already selected');
+    }
+    setSearchTerm('');
+    setShowSuggestions(false);
+  };
+
+  const handleSearchByRegistration = () => {
     setIsSearching(true);
     setErrorMessage('');
+    
     try {
-      if (car) {
-        // Add the selected car to found cars if not already present
-        setFoundCars(prev => 
-          prev.some(c => c._id === car._id) ? prev : [...prev, car]
-        );
-        setSearchTerm('');
+      if (!searchTerm.trim()) {
+        setErrorMessage('Please enter a registration number');
+        return;
+      }
+
+      // Try exact match by registration number
+      const exactMatch = availableCars.find(car => 
+        car.regestrationNumber.toLowerCase() === searchTerm.toLowerCase().trim()
+      );
+      
+      if (exactMatch) {
+        handleAddCar(exactMatch);
       } else {
-        // First try exact match by registration number in available cars only
-        const exactMatch = availableCars.find(c => 
-          c.regestrationNumber.toLowerCase() === searchTerm.toLowerCase()
+        // Check if car exists but is assigned to someone else
+        const carExists = allCars.find(car => 
+          car.regestrationNumber.toLowerCase() === searchTerm.toLowerCase().trim()
         );
         
-        if (exactMatch) {
-          setFoundCars(prev => 
-            prev.some(c => c._id === exactMatch._id) ? prev : [...prev, exactMatch]
-          );
-          setSearchTerm('');
+        if (carExists) {
+          setErrorMessage('This car is already assigned to another owner');
         } else {
-          // Check if the car exists in all cars but is assigned to another owner
-          const carExistsButAssigned = allCars.find(c => 
-            c.regestrationNumber.toLowerCase() === searchTerm.toLowerCase()
-          );
-          
-          if (carExistsButAssigned) {
-            // Find which owner has this car
-            const ownerWithCar = carOwners.find(owner => 
-              owner.cars.some(car => 
-                car.regestrationNumber.toLowerCase() === searchTerm.toLowerCase()
-              )
-            );
-            
-            if (ownerWithCar) {
-              setErrorMessage(`This car is already assigned to ${ownerWithCar.name}`);
-            } else {
-              setErrorMessage('This car is already assigned to another owner');
-            }
-          } else {
-            setErrorMessage('Car not found. Please register this car first');
-          }
+          setErrorMessage('Car not found. Please check the registration number or register this car first');
         }
       }
     } catch (error) {
@@ -262,12 +264,17 @@ const OwnerForm: React.FC<OwnerFormProps> = ({ type, ownerId, ownerData, onSucce
       setErrorMessage('Error searching for cars. Please try again.');
     } finally {
       setIsSearching(false);
-      setShowSuggestions(false);
     }
   };
 
   const handleRemoveCar = (carId: string) => {
-    setFoundCars(prev => prev.filter(car => car._id !== carId));
+    const car = selectedCars.find(c => c._id === carId);
+    setSelectedCarIds(prev => prev.filter(id => id !== carId));
+    setSelectedCars(prev => prev.filter(car => car._id !== carId));
+    
+    if (car) {
+      toast.success(`${car.model} (${car.regestrationNumber}) removed`);
+    }
   };
 
   const validateForm = (): boolean => {
@@ -275,6 +282,8 @@ const OwnerForm: React.FC<OwnerFormProps> = ({ type, ownerId, ownerData, onSucce
     
     if (!formData.name.trim()) {
       newErrors.name = 'Name is required';
+    } else if (formData.name.trim().length < 2) {
+      newErrors.name = 'Name must be at least 2 characters';
     }
     
     if (!formData.email.trim()) {
@@ -285,10 +294,16 @@ const OwnerForm: React.FC<OwnerFormProps> = ({ type, ownerId, ownerData, onSucce
     
     if (!formData.phone.trim()) {
       newErrors.phone = 'Phone number is required';
+    } else if (formData.phone.trim().length < 10) {
+      newErrors.phone = 'Phone number must be at least 10 digits';
     }
     
     if (!formData.location.trim()) {
       newErrors.location = 'Location is required';
+    }
+    
+    if (!formData.joinedDate) {
+      newErrors.joinedDate = 'Joined date is required';
     }
     
     setErrors(newErrors);
@@ -299,26 +314,23 @@ const OwnerForm: React.FC<OwnerFormProps> = ({ type, ownerId, ownerData, onSucce
     e.preventDefault();
     
     if (!validateForm()) {
+      toast.error('Please fix the form errors');
       return;
     }
     
-    if (foundCars.length === 0) {
+    if (selectedCarIds.length === 0) {
       setErrorMessage('Please add at least one car for this owner');
+      toast.error('At least one car must be assigned');
       return;
     }
 
     setIsSubmitting(true);
+    setErrorMessage('');
+    
     try {
       const payload = {
         ...formData,
-        cars: foundCars.map(car => ({
-          _id: car._id,
-          model: car.model,
-          regestrationNumber: car.regestrationNumber,
-          type: car.type,
-          year: car.year,
-          image: car.image || ''
-        }))
+        cars: selectedCarIds
       };
 
       const url = type === 'create' ? '/api/carowners' : `/api/carowners/${ownerId}`;
@@ -328,14 +340,42 @@ const OwnerForm: React.FC<OwnerFormProps> = ({ type, ownerId, ownerData, onSucce
       
       if (response.data.success) {
         toast.success(`Owner ${type === 'create' ? 'created' : 'updated'} successfully`);
-        onSuccess?.();
+        if (onSuccess) {
+          onSuccess();
+        }
       }
     } catch (error) {
       console.error('Error submitting form:', error);
-      toast.error('Error saving owner. Please try again.');
+      
+      if (axios.isAxiosError(error)) {
+        const errorMessage = error.response?.data?.error || 'Error saving owner';
+        toast.error(errorMessage);
+        setErrorMessage(errorMessage);
+      } else {
+        const errorMessage = 'Error saving owner. Please try again.';
+        toast.error(errorMessage);
+        setErrorMessage(errorMessage);
+      }
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const handleReset = () => {
+    setSelectedCarIds([]);
+    setSelectedCars([]);
+    setFormData({
+      name: '',
+      email: '',
+      phone: '',
+      location: '',
+      joinedDate: new Date().toISOString().slice(0, 7),
+      status: 'active'
+    });
+    setErrors({});
+    setErrorMessage('');
+    setSearchTerm('');
+    toast.success('Form reset');
   };
 
   if (isLoading) {
@@ -351,6 +391,16 @@ const OwnerForm: React.FC<OwnerFormProps> = ({ type, ownerId, ownerData, onSucce
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
+      {/* Error Message */}
+      {errorMessage && (
+        <div className="p-4 bg-red-50 border border-red-200 rounded-xl">
+          <p className="text-red-800 text-sm flex items-center space-x-2">
+            <FiX className="h-4 w-4" />
+            <span>{errorMessage}</span>
+          </p>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Name Field */}
         <div className="md:col-span-2">
@@ -509,37 +559,53 @@ const OwnerForm: React.FC<OwnerFormProps> = ({ type, ownerId, ownerData, onSucce
         </div>
         
         <div className="bg-light/70 p-4 rounded-xl border border-primary-light/30 mb-6" ref={searchRef}>
-           
-          
           <div className="relative">
             <div className="flex flex-col md:flex-row gap-3">
               <div className="relative flex-grow">
                 <input
                   type="text"
-                  placeholder="Search available cars by registration number (e.g. KDE 123A)"
+                  placeholder="Search by registration number, model, or type (e.g. KDE 123A)"
                   value={searchTerm}
                   onChange={(e) => {
                     setSearchTerm(e.target.value);
-                    if (e.target.value.length >= 3) setShowSuggestions(true);
+                    if (e.target.value.length >= 2) setShowSuggestions(true);
                   }}
-                  onFocus={() => searchTerm.length >= 3 && setShowSuggestions(true)}
+                  onFocus={() => searchTerm.length >= 2 && setShowSuggestions(true)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      handleSearchByRegistration();
+                    }
+                  }}
                   className="w-full px-4 py-3 border border-primary-light/40 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all duration-200"
                 />
                 {showSuggestions && suggestions.length > 0 && (
-                  <ul className="absolute z-10 w-full mt-1 bg-light border border-primary-light/40 rounded-xl shadow-lg max-h-60 overflow-auto">
+                  <ul className="absolute z-10 w-full mt-1 bg-white border border-primary-light/40 rounded-xl shadow-lg max-h-60 overflow-auto">
                     {suggestions.map((car) => (
                       <li
                         key={car._id}
-                        className="px-4 py-3 hover:bg-secondary-dark cursor-pointer transition-default flex justify-between items-center"
-                        onClick={() => handleSearch(car)}
+                        className="px-4 py-3 hover:bg-gray-50 cursor-pointer transition-default border-b border-gray-100 last:border-b-0"
+                        onClick={() => handleAddCar(car)}
                       >
-                        <div>
-                          <div className="font-medium text-earth">{car.model}</div>
-                          <div className="text-sm text-earth-light">{car.regestrationNumber}</div>
+                        <div className="flex justify-between items-center">
+                          <div>
+                            <div className="font-medium text-gray-900">{car.model}</div>
+                            <div className="text-sm text-gray-600">{car.regestrationNumber} • {car.type} • {car.year}</div>
+                            {car.location && (
+                              <div className="text-xs text-gray-500">{car.location}</div>
+                            )}
+                          </div>
+                          <div className="flex flex-col items-end">
+                            <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full">
+                              Available
+                            </span>
+                            {car.pricePerDay > 0 && (
+                              <span className="text-xs text-gray-600 mt-1">
+                                KES {car.pricePerDay.toLocaleString()}/day
+                              </span>
+                            )}
+                          </div>
                         </div>
-                        <span className="text-xs bg-green-500 text-light px-2 py-1 rounded-full">
-                          Available
-                        </span>
                       </li>
                     ))}
                   </ul>
@@ -547,34 +613,40 @@ const OwnerForm: React.FC<OwnerFormProps> = ({ type, ownerId, ownerData, onSucce
               </div>
               <button
                 type="button"
-                onClick={() => handleSearch()}
+                onClick={handleSearchByRegistration}
                 disabled={isSearching || !searchTerm.trim()}
-                className="px-4 py-3 bg-accent text-light rounded-xl hover:bg-accent-light transition-default disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-accent-light"
+                className="px-6 py-3 bg-accent text-white rounded-xl hover:bg-accent-dark transition-default disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-accent flex items-center gap-2"
               >
-                {isSearching ? 'Searching...' : 'Search'}
+                {isSearching ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+                    <span>Searching...</span>
+                  </>
+                ) : (
+                  <>
+                    <FiSearch className="h-4 w-4" />
+                    <span>Add Car</span>
+                  </>
+                )}
               </button>
             </div>
-            {errorMessage && (
-              <p className="mt-2 text-sm text-danger flex items-center space-x-1">
-                <FiX className="h-3 w-3" />
-                <span>{errorMessage}</span>
-              </p>
-            )}
           </div>
         </div>
 
-        {/* Found Cars List */}
-        {foundCars.length > 0 && (
+        {/* Selected Cars List */}
+        {selectedCars.length > 0 && (
           <div className="mb-6">
             <div className="flex justify-between items-center mb-3">
               <h4 className="font-medium text-dark">
-                Selected Vehicles ({foundCars.length})
+                Selected Vehicles ({selectedCars.length})
               </h4>
               <button 
                 type="button"
                 onClick={() => {
-                  setFoundCars([]);
+                  setSelectedCarIds([]);
+                  setSelectedCars([]);
                   setErrorMessage('');
+                  toast.success('All cars removed');
                 }}
                 className="text-sm text-danger hover:underline"
               >
@@ -582,34 +654,41 @@ const OwnerForm: React.FC<OwnerFormProps> = ({ type, ownerId, ownerData, onSucce
               </button>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {foundCars.map(car => (
-                <div key={car._id} className="relative bg-secondary-dark/10 p-3 rounded-xl border border-primary-light/20">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {selectedCars.map(car => (
+                <div key={car._id} className="relative bg-white p-4 rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
                   <div className="flex items-start gap-3">
                     {car.image && (
-                      <Image
-                        width={64}
-                        height={64}
-                        src={car.image} 
-                        alt={car.model}
-                        className="w-16 h-16 object-cover rounded-md"
-                      />
+                      <div className="relative w-16 h-16 flex-shrink-0">
+                        <Image
+                          src={car.image} 
+                          alt={car.model}
+                          fill
+                          className="object-cover rounded-lg"
+                        />
+                      </div>
                     )}
-                    <div className="flex-1">
-                      <div className="flex justify-between items-start">
-                        <h5 className="font-medium text-primary">{car.model}</h5>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex justify-between items-start mb-2">
+                        <h5 className="font-semibold text-gray-900 truncate">{car.model}</h5>
                         <button
                           type="button"
                           onClick={() => handleRemoveCar(car._id)}
-                          className="text-danger hover:text-danger-dark"
+                          className="text-red-500 hover:text-red-700 p-1 -mt-1"
                           aria-label="Remove car"
                         >
                           <FiX className="h-4 w-4" />
                         </button>
                       </div>
-                      <div className="text-sm text-gray-700 mt-1">
-                        <p>{car.regestrationNumber}</p>
+                      <div className="text-sm text-gray-600 space-y-1">
+                        <p className="font-medium text-primary">{car.regestrationNumber}</p>
                         <p>{car.type} • {car.year}</p>
+                        {car.location && <p className="text-xs">{car.location}</p>}
+                        {car.pricePerDay > 0 && (
+                          <p className="text-xs font-medium text-green-600">
+                            KES {car.pricePerDay.toLocaleString()}/day
+                          </p>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -622,8 +701,19 @@ const OwnerForm: React.FC<OwnerFormProps> = ({ type, ownerId, ownerData, onSucce
         {/* No cars available message */}
         {availableCars.length === 0 && !isLoading && (
           <div className="p-6 bg-orange-50 border border-orange-200 rounded-xl text-center">
+            <FiInfo className="h-8 w-8 text-orange-500 mx-auto mb-2" />
             <p className="text-orange-800 font-medium">No cars available for assignment</p>
-            <p className="text-sm text-orange-600 mt-1">All cars are currently assigned to owners</p>
+            <p className="text-sm text-orange-600 mt-1">All cars are currently assigned to owners or you need to add cars first</p>
+          </div>
+        )}
+
+        {/* No cars selected warning */}
+        {selectedCars.length === 0 && availableCars.length > 0 && (
+          <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-xl">
+            <p className="text-yellow-800 text-sm flex items-center space-x-2">
+              <FiInfo className="h-4 w-4" />
+              <span>Please select at least one car for this owner</span>
+            </p>
           </div>
         )}
       </div>
@@ -633,19 +723,7 @@ const OwnerForm: React.FC<OwnerFormProps> = ({ type, ownerId, ownerData, onSucce
         <div className="flex flex-col sm:flex-row sm:justify-end space-y-3 sm:space-y-0 sm:space-x-4">
           <button
             type="button"
-            onClick={() => {
-              setFoundCars([]);
-              setFormData({
-                name: '',
-                email: '',
-                phone: '',
-                location: '',
-                joinedDate: new Date().toISOString().slice(0, 7),
-                status: 'active'
-              });
-              setErrors({});
-              setErrorMessage('');
-            }}
+            onClick={handleReset}
             disabled={isSubmitting}
             className="px-6 py-3 border border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
           >
@@ -653,12 +731,12 @@ const OwnerForm: React.FC<OwnerFormProps> = ({ type, ownerId, ownerData, onSucce
           </button>
           <button
             type="submit"
-            disabled={isSubmitting || foundCars.length === 0}
-            className="bg-gradient-to-r from-primary to-primary-dark text-light px-6 py-3 rounded-xl flex items-center justify-center gap-2 hover:from-primary-dark hover:to-primary-glow transition-all duration-300 font-medium shadow-lg shadow-primary/25 disabled:opacity-50 disabled:cursor-not-allowed"
+            disabled={isSubmitting || selectedCarIds.length === 0}
+            className="bg-gradient-to-r from-primary to-primary-dark text-white px-6 py-3 rounded-xl flex items-center justify-center gap-2 hover:from-primary-dark hover:to-primary-glow transition-all duration-300 font-medium shadow-lg shadow-primary/25 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isSubmitting ? (
               <>
-                <div className="animate-spin rounded-full h-4 w-4 border-2 border-light border-t-transparent"></div>
+                <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
                 <span>{type === 'create' ? 'Creating...' : 'Updating...'}</span>
               </>
             ) : (

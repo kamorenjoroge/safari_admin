@@ -14,6 +14,7 @@ const OwnerForm = dynamic(() => import("../forms/CarOwnerForm"), {
 type OwnerActionType = "create" | "update" | "delete";
 
 export interface Owner {
+  _id?: string;
   name: string;
   email: string;
   phone: string;
@@ -27,7 +28,11 @@ export interface Owner {
     type: string;
     year: number;
     image: string;
-  }[];
+    pricePerDay?: number;
+    transmission?: string;
+    fuel?: string;
+    seats?: number;
+  }[] | string[]; // Can be array of objects (populated) or array of IDs
   id?: string;
 }
 
@@ -79,7 +84,7 @@ const OwnerModal: React.FC<OwnerModalProps> = ({
       setIsLoading(true);
       const res = await fetch(`/api/carowners/${id}`, { method: "DELETE" });
       if (res.ok) {
-        toast.success("Car owner deleted successfully");
+        toast.success("Car owner and associated cars deleted successfully");
         onSuccess?.();
         setOpen(false);
       } else {
@@ -95,6 +100,18 @@ const OwnerModal: React.FC<OwnerModalProps> = ({
     } finally {
       setIsLoading(false);
     }
+  };
+
+  // Helper to get car count (works with both populated cars and just IDs)
+  const getCarCount = () => {
+    if (!data?.cars) return 0;
+    return data.cars.length;
+  };
+
+  // Helper to check if cars are populated (have model property)
+  const areCarsPopulated = () => {
+    if (!data?.cars || data.cars.length === 0) return false;
+    return typeof data.cars[0] !== 'string' && 'model' in data.cars[0];
   };
 
   const renderContent = () => {
@@ -121,7 +138,16 @@ const OwnerModal: React.FC<OwnerModalProps> = ({
               location: data.location,
               joinedDate: data.joinedDate,
               status: data.status,
-              cars: data.cars
+              cars: areCarsPopulated() 
+                ? (data.cars as Array<{
+                    _id: string;
+                    model: string;
+                    regestrationNumber: string;
+                    type: string;
+                    year: number;
+                    image: string;
+                  }>)
+                : [] // If not populated, empty array (form will fetch cars)
             } : undefined}
             onSuccess={() => {
               setOpen(false);
@@ -146,7 +172,7 @@ const OwnerModal: React.FC<OwnerModalProps> = ({
                   Owner: <strong>{data.name}</strong>
                 </p>
                 <p className="text-sm text-gray-600">
-                  {data.cars.length} {data.cars.length === 1 ? 'car' : 'cars'} will be unassigned
+                  {getCarCount()} {getCarCount() === 1 ? 'car' : 'cars'} will be deleted
                 </p>
               </>
             )}

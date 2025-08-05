@@ -57,7 +57,8 @@ const CarSchema = new Schema({
     default: [],
   },
   schedule: [{
-    date: {
+    date: [Date],
+    available: {
       type: Date,
       required: false,
     },

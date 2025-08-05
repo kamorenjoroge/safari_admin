@@ -1,148 +1,197 @@
-// app/api/owners/route.ts
-import { NextResponse } from 'next/server';
+// app/api/carowners/route.ts
+import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '@/lib/dbConnect';
 import { CarOwner } from '@/model/carowners';
+import { Car } from '@/model/cars';
+import mongoose from 'mongoose';
 
-// Define car input type
-type CarInput = {
-  _id: string;
-  model: string;
-  regestrationNumber: string;
-  type: string;
-  year: number;
-  image?: string;
-};
-
-// GET - List all car owners with their cars
-export async function GET(request: Request) {
+// GET - Fetch all car owners with populated car data
+export async function GET() {
   try {
     await dbConnect();
-
-    // Get query parameters for filtering
-    const { searchParams } = new URL(request.url);
-    const search = searchParams.get('search') || '';
-    const status = searchParams.get('status') || 'all';
-
-    // Build the query
-    const query: Record<string, unknown> = {};
-
-    if (status !== 'all') {
-      query.status = status;
-    }
-
-    if (search) {
-      query.$or = [
-        { name: { $regex: search, $options: 'i' } },
-        { email: { $regex: search, $options: 'i' } },
-        { location: { $regex: search, $options: 'i' } },
-        { 'cars.model': { $regex: search, $options: 'i' } },
-        { 'cars.regestrationNumber': { $regex: search, $options: 'i' } }
-      ];
-    }
-
-    const owners = await CarOwner.find(query)
-      .sort({ createdAt: -1 }) // Newest first
-      .lean();
-
-    return NextResponse.json({ 
-      success: true, 
-      data: owners 
+    
+    const owners = await CarOwner.find({})
+      .populate({
+        path: 'cars',
+        select: 'model regestrationNumber type year image location pricePerDay',
+        model: 'Car'
+      })
+      .sort({ createdAt: -1 });
+    
+    return NextResponse.json({
+      success: true,
+      data: owners,
+      count: owners.length
     });
   } catch (error) {
     console.error('Error fetching car owners:', error);
     return NextResponse.json(
-      { success: false, error: 'Server error' },
+      { 
+        success: false, 
+        error: 'Failed to fetch car owners' 
+      },
       { status: 500 }
     );
   }
 }
 
-// POST - Create a new car owner
-export async function POST(request: Request) {
+// POST - Create new car owner
+export async function POST(request: NextRequest) {
   try {
     await dbConnect();
-    const body = await request.json() as {
-      name: string;
-      email: string;
-      phone: string;
-      location: string;
-      joinedDate?: string;
-      status?: string;
-      cars: CarInput[];
-    };
+    
+    const body = await request.json();
+    const { name, email, phone, location, joinedDate, status, cars } = body;
 
-    // Validate required fields
-    if (!body.name || !body.email || !body.phone || !body.location) {
+    // Validation
+    if (!name || !email || !phone || !location || !joinedDate) {
       return NextResponse.json(
-        { success: false, error: 'Missing required fields' },
+        { 
+          success: false, 
+          error: 'Missing required fields: name, email, phone, location, joinedDate' 
+        },
         { status: 400 }
       );
     }
 
-    // Validate at least one car
-    if (!body.cars || body.cars.length === 0) {
+    if (!cars || !Array.isArray(cars) || cars.length === 0) {
       return NextResponse.json(
-        { success: false, error: 'At least one car is required' },
+        { 
+          success: false, 
+          error: 'At least one car must be assigned to the owner' 
+        },
         { status: 400 }
       );
     }
 
-    // Validate car fields
-    for (const car of body.cars) {
-      if (
-        !car._id ||
-        !car.model ||
-        !car.regestrationNumber ||
-        !car.type ||
-        !car.year
-      ) {
-        return NextResponse.json(
-          { success: false, error: 'All car fields are required' },
-          { status: 400 }
-        );
-      }
+    // Check if email already exists
+    const existingOwnerByEmail = await CarOwner.findOne({ email });
+    if (existingOwnerByEmail) {
+      return NextResponse.json(
+        { 
+          success: false, 
+          error: 'An owner with this email already exists' 
+        },
+        { status: 400 }
+      );
     }
 
-    // Create the new owner
-    const newOwner = await CarOwner.create({
-      name: body.name,
-      email: body.email,
-      phone: body.phone,
-      location: body.location,
-      joinedDate: body.joinedDate || new Date().toISOString().slice(0, 7),
-      status: body.status || 'active',
-      cars: body.cars.map((car) => ({
-        _id: car._id,
-        model: car.model,
-        regestrationNumber: car.regestrationNumber,
-        type: car.type,
-        year: car.year,
-        image: car.image || ''
-      }))
+    // Check if phone already exists
+    const existingOwnerByPhone = await CarOwner.findOne({ phone });
+    if (existingOwnerByPhone) {
+      return NextResponse.json(
+        { 
+          success: false, 
+          error: 'An owner with this phone number already exists' 
+        },
+        { status: 400 }
+      );
+    }
+
+    // Validate car IDs and check if they exist
+    const validCarIds = cars.filter(id => mongoose.Types.ObjectId.isValid(id));
+    if (validCarIds.length !== cars.length) {
+      return NextResponse.json(
+        { 
+          success: false, 
+          error: 'Invalid car ID format' 
+        },
+        { status: 400 }
+      );
+    }
+
+    // Check if all cars exist
+    const existingCars = await Car.find({ _id: { $in: validCarIds } });
+    if (existingCars.length !== validCarIds.length) {
+      return NextResponse.json(
+        { 
+          success: false, 
+          error: 'One or more cars do not exist' 
+        },
+        { status: 400 }
+      );
+    }
+
+    // Check if any of the cars are already assigned to another owner
+    const carsAlreadyAssigned = await CarOwner.find({
+      cars: { $in: validCarIds }
     });
 
-    return NextResponse.json({ 
-      success: true, 
-      data: newOwner 
+    if (carsAlreadyAssigned.length > 0) {
+      return NextResponse.json(
+        { 
+          success: false, 
+          error: 'One or more cars are already assigned to another owner' 
+        },
+        { status: 400 }
+      );
+    }
+
+    // Create the new car owner
+    const newOwner = new CarOwner({
+      name: name.trim(),
+      email: email.trim().toLowerCase(),
+      phone: phone.trim(),
+      location: location.trim(),
+      joinedDate: joinedDate.trim(),
+      status: status || 'active',
+      cars: validCarIds
     });
-  } catch (error: unknown) {
+
+    const savedOwner = await newOwner.save();
+    
+    // Populate the cars data in the response
+    const populatedOwner = await CarOwner.findById(savedOwner._id)
+      .populate({
+        path: 'cars',
+        select: 'model regestrationNumber type year image location pricePerDay',
+        model: 'Car'
+      });
+
+    return NextResponse.json({
+      success: true,
+      data: populatedOwner,
+      message: 'Car owner created successfully'
+    }, { status: 201 });
+
+  } catch (error) {
     console.error('Error creating car owner:', error);
-
-    // Handle duplicate key errors (e.g., duplicate email)
-    if (
-      error &&
-      typeof error === 'object' &&
-      'code' in error &&
-      (error as { code: number }).code === 11000
-    ) {
+    
+    // Handle mongoose validation errors
+    if (error instanceof mongoose.Error.ValidationError) {
+      const validationErrors = Object.values(error.errors).map(err => err.message);
       return NextResponse.json(
-        { success: false, error: 'Email already exists' },
+        { 
+          success: false, 
+          error: `Validation error: ${validationErrors.join(', ')}` 
+        },
+        { status: 400 }
+      );
+    }
+
+    // Handle duplicate key errors
+    if (
+      typeof error === 'object' &&
+      error !== null &&
+      'code' in error &&
+      (error as { code?: number }).code === 11000
+    ) {
+      const keyPattern = (error as { keyPattern?: Record<string, unknown> }).keyPattern;
+      const field = keyPattern ? Object.keys(keyPattern)[0] : 'field';
+      return NextResponse.json(
+        { 
+          success: false, 
+          error: `${field} already exists` 
+        },
         { status: 400 }
       );
     }
 
     return NextResponse.json(
-      { success: false, error: 'Server error' },
+      { 
+        success: false, 
+        error: 'Internal server error' 
+      },
       { status: 500 }
     );
   }
